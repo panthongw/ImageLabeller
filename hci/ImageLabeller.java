@@ -29,14 +29,21 @@ public class ImageLabeller extends JFrame {
 	JPanel appPanel = null;
 	
 	/**
-	 * toolbox - put all buttons and stuff here!
+	 * toolbox - put all buttons and stuff in these two toolboxes
 	 */
-	JPanel toolboxPanel = null;
+	JPanel topToolboxPanel = null;
+	JPanel bottomToolboxPanel = null;
+	JPanel rightToolboxPanel = null;
 	
 	/**
 	 * image panel - displays image and editing area
 	 */
 	ImagePanel imagePanel = null;
+
+	/**
+	 * middle panel - holds image and middletoolbox panels
+	 */
+	JPanel middlePanel = null;
 	
 	/**
 	 * handles New Object button action
@@ -68,18 +75,45 @@ public class ImageLabeller extends JFrame {
 
 		//setup main window panel
 		appPanel = new JPanel();
-		this.setLayout(new BoxLayout(appPanel, BoxLayout.X_AXIS));
+		appPanel.setLayout(new BoxLayout(appPanel, BoxLayout.Y_AXIS));
+		this.setLayout(new BoxLayout(appPanel, BoxLayout.Y_AXIS));
 		this.setContentPane(appPanel);
+
+ 
+		//create top toolbox panel
+        topToolboxPanel = new JPanel();
+        
+        //Add button
+		JButton randbutton = new JButton("exit");
+		randbutton.setMnemonic(KeyEvent.VK_N);
+		randbutton.setSize(50, 20);
+		randbutton.setEnabled(true);
+		randbutton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	System.exit(1);
+			}
+		});
+		randbutton.setToolTipText("Click to exit");
 		
+		topToolboxPanel.add(randbutton);
+		
+		//add toolbox to window
+		appPanel.add(topToolboxPanel);
+		
+
+		//create middle panel with image and sidebar
+		middlePanel = new JPanel();
+		//middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.X_AXIS));
+
         //Create and set up the image panel.
 		imagePanel = new ImagePanel(imageFilename);
 		imagePanel.setOpaque(true); //content panes must be opaque
-		
-        appPanel.add(imagePanel);
 
-        //create toolbox panel
-        toolboxPanel = new JPanel();
-        
+		middlePanel.add(imagePanel);
+
+		rightToolboxPanel = new JPanel();
+		
         //Add button
 		JButton newPolyButton = new JButton("New object");
 		newPolyButton.setMnemonic(KeyEvent.VK_N);
@@ -93,10 +127,34 @@ public class ImageLabeller extends JFrame {
 		});
 		newPolyButton.setToolTipText("Click to add new object");
 		
-		toolboxPanel.add(newPolyButton);
+		rightToolboxPanel.add(newPolyButton);
 		
 		//add toolbox to window
-		appPanel.add(toolboxPanel);
+		middlePanel.add(rightToolboxPanel);
+
+        appPanel.add(middlePanel);
+
+
+        //create toolbox panel
+        bottomToolboxPanel = new JPanel();
+        
+        //Add button
+		JButton editLabelButton = new JButton("Edit Label");
+		editLabelButton.setMnemonic(KeyEvent.VK_N);
+		editLabelButton.setSize(50, 20);
+		editLabelButton.setEnabled(true);
+		editLabelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	addNewPolygon();
+			}
+		});
+		editLabelButton.setToolTipText("Click to edit a label");
+		
+		bottomToolboxPanel.add(editLabelButton);
+		
+		//add toolbox to window
+		appPanel.add(bottomToolboxPanel);
 		
 		//display all the stuff
 		this.pack();
