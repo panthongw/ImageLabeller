@@ -4,6 +4,8 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.*;
+import javax.swing.filechooser.*;
 
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
@@ -36,8 +38,24 @@ public class ImageLabeller extends JFrame {
 	/**
 	 * image panel - displays image and editing area
 	 */
-	ImagePanel imagePanel = null;
+	ImagePanel imagePanel = new ImagePanel();
 	
+	/**
+	 * Launches file choose to retrieve an image path
+	*/
+	public void launchFileChooser(){
+		String imagePath = null;
+		JFileChooser chooser = new JFileChooser();
+    FileNameExtensionFilter filter = new FileNameExtensionFilter(
+        "JPG & GIF Images", "jpg", "gif");
+    chooser.setFileFilter(filter);
+    int returnVal = chooser.showOpenDialog(this);
+    if(returnVal == JFileChooser.APPROVE_OPTION) {
+        imagePath = chooser.getSelectedFile().getAbsolutePath().toString();
+    }
+    imagePanel.setImage(imagePath);
+	}
+
 	/**
 	 * handles New Object button action
 	 */
@@ -56,7 +74,7 @@ public class ImageLabeller extends JFrame {
 	 * @param imageFilename image to be loaded for editing
 	 * @throws Exception
 	 */
-	public void setupGUI(String imageFilename) throws Exception {
+	public void setupGUI() throws Exception {
 		this.addWindowListener(new WindowAdapter() {
 		  	public void windowClosing(WindowEvent event) {
 		  		//here we exit the program (maybe we should ask if the user really wants to do it?)
@@ -72,7 +90,7 @@ public class ImageLabeller extends JFrame {
 		this.setContentPane(appPanel);
 		
         //Create and set up the image panel.
-		imagePanel = new ImagePanel(imageFilename);
+		imagePanel = new ImagePanel();
 		imagePanel.setOpaque(true); //content panes must be opaque
 		
         appPanel.add(imagePanel);
@@ -81,6 +99,17 @@ public class ImageLabeller extends JFrame {
         toolboxPanel = new JPanel();
         
         //Add button
+		JButton openImageButton = new JButton("Open Image");
+		openImageButton.setMnemonic(KeyEvent.VK_N);
+		openImageButton.setSize(50, 20);
+		openImageButton.setEnabled(true);
+		openImageButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	launchFileChooser();
+			}
+		});
+
 		JButton newPolyButton = new JButton("New object");
 		newPolyButton.setMnemonic(KeyEvent.VK_N);
 		newPolyButton.setSize(50, 20);
@@ -93,6 +122,7 @@ public class ImageLabeller extends JFrame {
 		});
 		newPolyButton.setToolTipText("Click to add new object");
 		
+		toolboxPanel.add(openImageButton);
 		toolboxPanel.add(newPolyButton);
 		
 		//add toolbox to window
@@ -111,9 +141,9 @@ public class ImageLabeller extends JFrame {
 		try {
 			//create a window and display the image
 			ImageLabeller window = new ImageLabeller();
-			window.setupGUI(argv[0]);
+			window.setupGUI();
 		} catch (Exception e) {
-			System.err.println("Image: " + argv[0]);
+			System.err.println("Image: ");
 			e.printStackTrace();
 		}
 	}
