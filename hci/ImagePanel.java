@@ -58,6 +58,10 @@ public class ImagePanel extends JPanel implements MouseListener {
 		
 		addMouseListener(this);
 	}
+
+	public ArrayList<Point> getCurrentPolygon(){
+		return currentPolygon;
+	}
 	
 	/**
 	 * extended constructor - loads image to be labelled
