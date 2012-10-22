@@ -10,7 +10,10 @@ public class Label{
 
 	public Label(ArrayList<Point> poly, String name){
 
-		this.polygon = poly;
+		this.polygon = new ArrayList<Point>();
+		for(int i = 0; i < poly.size(); i++){
+			this.polygon.add(poly.get(i));
+		}
 		this.labelName = name;
 	}
 

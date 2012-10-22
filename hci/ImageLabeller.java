@@ -10,7 +10,10 @@ import javax.swing.JScrollPane;
 import javax.swing.DefaultListModel;
 import javax.swing.*;
 import javax.swing.filechooser.*;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.event.ListSelectionEvent;
 
+import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -21,6 +24,8 @@ import java.awt.event.WindowEvent;
 import java.awt.event.ItemEvent;
 
 import java.util.ArrayList;
+
+import hci.utils.*;
 
 /**
  * Main class of the program - handles display of the main window
@@ -75,6 +80,16 @@ public class ImageLabeller extends JFrame {
 	ArrayList<Label> labelsList = new ArrayList<Label>();
 
 	/**
+	 * previous label index - needed to redraw that label green
+	 */
+	int prevLabelIdx = -1;
+
+	/**
+	 * curpolysave - keep current polygon to save for label array
+	 */
+	ArrayList<Point> curPolygonSave;
+
+	/**
 	 * labelcounter - counts number of labels for default label name display
 	 */
 	private static int labelCounter = 0;
@@ -111,6 +126,11 @@ public class ImageLabeller extends JFrame {
 	}
 
 	private void addLabelToList(){
+		curPolygonSave = new ArrayList<Point>();
+		for(int i = 0; i < imagePanel.getCurrentPolygon().size(); i++){
+			curPolygonSave.add(imagePanel.getCurrentPolygon().get(i));
+		}
+
 		imagePanel.addNewPolygon();
 		String str = JOptionPane.showInputDialog(null, "Enter label name : ",
 													"label" + labelCounter, 1);
@@ -123,9 +143,22 @@ public class ImageLabeller extends JFrame {
   		labelsListModel.addElement(str);
 
   		//create label - polygon pair here
-  		labelsList.add(new Label(imagePanel.getCurrentPolygon(), str));
+  		labelsList.add(new Label(curPolygonSave, str));
 
   		labelsBox.setSelectedIndex(labelsBox.getModel().getSize() - 1);
+	}
+
+	public void updateSelectedLabel(){
+		
+		//turn previous label green
+		if(prevLabelIdx != -1){
+			imagePanel.drawPolygon(labelsList.get(prevLabelIdx).getPolygon(), Color.GREEN, true);
+		}
+
+		//make new label and turn it red
+		Label curLabel = labelsList.get(labelsBox.getSelectedIndex());
+		imagePanel.drawPolygon(curLabel.getPolygon(), Color.RED, true);
+		prevLabelIdx = labelsBox.getSelectedIndex();
 	}
 
 	/**
@@ -202,7 +235,7 @@ public class ImageLabeller extends JFrame {
 			    	removeSelectedFileFromList();
 			}
 		});
-		delButton.setToolTipText("Click to delete the current image");
+		delButton.setToolTipText("Click to remove the current image");
 
 		topToolboxPanel.add(openButton);
 		topToolboxPanel.add(delButton);
@@ -232,6 +265,13 @@ public class ImageLabeller extends JFrame {
 		labelsBox = new JList(labelsListModel);
 		labelsBox.setSize(500,200);
 		labelsPane = new JScrollPane(labelsBox);
+
+		labelsBox.addListSelectionListener(new ListSelectionListener(){
+			@Override
+			public void valueChanged(ListSelectionEvent e){
+				updateSelectedLabel();
+			}
+		});
 
 		rightToolboxPanel.add(labelsPane);
 		

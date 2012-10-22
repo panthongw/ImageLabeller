@@ -104,21 +104,21 @@ public class ImagePanel extends JPanel implements MouseListener {
 		
 		//display all the completed polygons
 		for(ArrayList<Point> polygon : polygonsList) {
-			drawPolygon(polygon);
+			drawPolygon(polygon, Color.GREEN, false);
 			finishPolygon(polygon);
 		}
 		
 		//display current polygon
-		drawPolygon(currentPolygon);
+		drawPolygon(currentPolygon, Color.GREEN, false);
 	}
 	
 	/**
 	 * displays a polygon without last stroke
 	 * @param polygon to be displayed
 	 */
-	public void drawPolygon(ArrayList<Point> polygon) {
+	public void drawPolygon(ArrayList<Point> polygon, Color color, boolean forSwitch) {
 		Graphics2D g = (Graphics2D)this.getGraphics();
-		g.setColor(Color.GREEN);
+		g.setColor(color);
 		for(int i = 0; i < polygon.size(); i++) {
 			Point currentVertex = polygon.get(i);
 			if (i != 0) {
@@ -126,6 +126,12 @@ public class ImagePanel extends JPanel implements MouseListener {
 				g.drawLine(prevVertex.getX(), prevVertex.getY(), currentVertex.getX(), currentVertex.getY());
 			}
 			g.fillOval(currentVertex.getX() - 5, currentVertex.getY() - 5, 10, 10);
+		}
+
+		//if selecting a new label
+		if(forSwitch){
+			g.drawLine(polygon.get(0).getX(), polygon.get(0).getY(),
+					polygon.get(polygon.size() - 1).getX(), polygon.get(polygon.size() - 1).getY());
 		}
 	}
 	
