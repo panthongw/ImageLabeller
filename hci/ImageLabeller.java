@@ -4,15 +4,23 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JComboBox;
+import javax.swing.JList;
+import javax.swing.JScrollPane;
+import javax.swing.DefaultListModel;
 import javax.swing.*;
 import javax.swing.filechooser.*;
 
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.ItemEvent;
+
+import java.util.ArrayList;
 
 /**
  * Main class of the program - handles display of the main window
@@ -46,6 +54,30 @@ public class ImageLabeller extends JFrame {
 	 * middle panel - holds image and middletoolbox panels
 	 */
 	JPanel middlePanel = null;
+
+	/**
+	 * open combobox - switch quickly between images
+	 */
+	JComboBox openComboBox = null;
+
+	/**
+	 * buttons to delete and edit labels
+	 */
+	JButton delLabelButton = null;
+	JButton editLabelButton = null;
+
+	/**
+	 * scrollpane, listbox, and list model for storing the labels
+	 */
+	DefaultListModel labelsListModel = new DefaultListModel();
+	JList labelsBox = null;
+	JScrollPane labelsPane = null;
+	ArrayList<Label> labelsList = new ArrayList<Label>();
+
+	/**
+	 * labelcounter - counts number of labels for default label name display
+	 */
+	private static int labelCounter = 0;
 	
 	/**
 	 * Launches file choose to retrieve an image path
@@ -61,6 +93,39 @@ public class ImageLabeller extends JFrame {
         imagePath = chooser.getSelectedFile().getAbsolutePath().toString();
     }
     imagePanel.setImage(imagePath);
+    openComboBox.addItem(chooser.getSelectedFile().toString());
+    openComboBox.setSelectedItem(chooser.getSelectedFile().toString());
+	}
+
+	private void removeSelectedFileFromList(){
+		openComboBox.removeItem(openComboBox.getSelectedItem());
+		if(openComboBox.getItemCount() == 0){
+			imagePanel = new ImagePanel();
+		} else{
+			imagePanel.setImage((String) openComboBox.getSelectedItem());
+		}
+	}
+
+	private void changeFileInList(){
+		imagePanel.setImage((String) openComboBox.getSelectedItem());
+	}
+
+	private void addLabelToList(){
+		imagePanel.addNewPolygon();
+		String str = JOptionPane.showInputDialog(null, "Enter label name : ",
+													"label" + labelCounter, 1);
+  		if(str == null){
+  			str = "label" + labelCounter;
+  		}
+
+  		labelCounter++;
+
+  		labelsListModel.addElement(str);
+
+  		//create label - polygon pair here
+  		labelsList.add(new Label(imagePanel.getCurrentPolygon(), str));
+
+  		labelsBox.setSelectedIndex(labelsBox.getModel().getSize() - 1);
 	}
 
 	/**
@@ -101,21 +166,47 @@ public class ImageLabeller extends JFrame {
 		//create top toolbox panel
         topToolboxPanel = new JPanel();
         
-        //Add button
-		JButton randbutton = new JButton("exit");
-		randbutton.setMnemonic(KeyEvent.VK_N);
-		randbutton.setSize(50, 20);
-		randbutton.setEnabled(true);
-		randbutton.addActionListener(new ActionListener() {
+        //Add combobox
+		openComboBox = new JComboBox();
+		openComboBox.setSize(550,25);
+		openComboBox.addItemListener(new ItemListener(){
 			@Override
-			public void actionPerformed(ActionEvent e) {
-			    	System.exit(1);
+			public void itemStateChanged(ItemEvent e){
+				changeFileInList();
 			}
 		});
-		randbutton.setToolTipText("Click to exit");
+		openComboBox.setToolTipText("Switch between open files");
 		
-		topToolboxPanel.add(randbutton);
+		topToolboxPanel.add(openComboBox);
+
+		//add buttons
+		JButton openButton = new JButton("+");
+		openButton.setMnemonic(KeyEvent.VK_N);
+		openButton.setSize(20, 20);
+		openButton.setEnabled(true);
+		openButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	launchFileChooser();
+			}
+		});
+		openButton.setToolTipText("Click to open a new image");
 		
+		JButton delButton = new JButton("-");
+		delButton.setMnemonic(KeyEvent.VK_N);
+		delButton.setSize(20, 20);
+		delButton.setEnabled(true);
+		delButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	removeSelectedFileFromList();
+			}
+		});
+		delButton.setToolTipText("Click to delete the current image");
+
+		topToolboxPanel.add(openButton);
+		topToolboxPanel.add(delButton);
+
 		//add toolbox to window
 		appPanel.add(topToolboxPanel);
 		
@@ -130,8 +221,21 @@ public class ImageLabeller extends JFrame {
 		middlePanel.add(imagePanel);
 
 		rightToolboxPanel = new JPanel();
+		rightToolboxPanel.setLayout(new BoxLayout(rightToolboxPanel, BoxLayout.Y_AXIS));
+
+		//add label "labels:"
+		JLabel labelsLabel = new JLabel("Labels:");
+
+		rightToolboxPanel.add(labelsLabel);
+
+		//add labels list
+		labelsBox = new JList(labelsListModel);
+		labelsBox.setSize(500,200);
+		labelsPane = new JScrollPane(labelsBox);
+
+		rightToolboxPanel.add(labelsPane);
 		
-        //Add button
+        //Add buttons
 		JButton openImageButton = new JButton("Open Image");
 		openImageButton.setMnemonic(KeyEvent.VK_N);
 		openImageButton.setSize(50, 20);
@@ -155,9 +259,22 @@ public class ImageLabeller extends JFrame {
 			}
 		});
 		newPolyButton.setToolTipText("Click to add new object");
+
+		JButton doneEditingButton = new JButton("Label Done");
+		doneEditingButton.setMnemonic(KeyEvent.VK_N);
+		doneEditingButton.setSize(50, 20);
+		doneEditingButton.setEnabled(true);
+		doneEditingButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	addLabelToList();
+			}
+		});
+		doneEditingButton.setToolTipText("Click when finished editing label");
 		
 		rightToolboxPanel.add(openImageButton);
 		rightToolboxPanel.add(newPolyButton);
+		rightToolboxPanel.add(doneEditingButton);
 		
 		//add toolbox to window
 		middlePanel.add(rightToolboxPanel);
@@ -168,20 +285,33 @@ public class ImageLabeller extends JFrame {
         //create toolbox panel
         bottomToolboxPanel = new JPanel();
         
-        //Add button
-		JButton editLabelButton = new JButton("Edit Label");
+        //Add buttons
+		editLabelButton = new JButton("Edit Label");
 		editLabelButton.setMnemonic(KeyEvent.VK_N);
 		editLabelButton.setSize(50, 20);
-		editLabelButton.setEnabled(true);
+		editLabelButton.setEnabled(false);
 		editLabelButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	addNewPolygon();
+			    	//edit label function
 			}
 		});
 		editLabelButton.setToolTipText("Click to edit a label");
+
+		delLabelButton = new JButton("Delete Label");
+		delLabelButton.setMnemonic(KeyEvent.VK_N);
+		delLabelButton.setSize(50, 20);
+		delLabelButton.setEnabled(false);
+		delLabelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	//delete label function
+			}
+		});
+		editLabelButton.setToolTipText("Click to remove a label");
 		
 		bottomToolboxPanel.add(editLabelButton);
+		bottomToolboxPanel.add(delLabelButton);
 		
 		//add toolbox to window
 		appPanel.add(bottomToolboxPanel);
