@@ -238,6 +238,9 @@ public class ImagePanel extends JPanel implements MouseListener {
 	public void reloadImage(){
 		setImage(imageNameSave);
 	}
+	public void setPolygonsList(ArrayList<ArrayList<Point>> polygons){
+		this.polygonsList = polygons;
+	}
 
 	public void drawAllPolygons(){
 		for(int i = 0; i < polygonsList.size(); i++){
