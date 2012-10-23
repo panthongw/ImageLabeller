@@ -110,7 +110,7 @@ public class ImageLabeller extends JFrame {
 	/**
 	 * previous label index - needed to redraw that label green
 	 */
-	int prevLabelIdx = -1;
+	int [] prevLabelIndices = null;
 
 	/**
 	 * curpolysave - keep current polygon to save for label array
@@ -121,6 +121,13 @@ public class ImageLabeller extends JFrame {
 	 * labelcounter - counts number of labels for default label name display
 	 */
 	private static int labelCounter = 0;
+
+	/**
+	 * error handling popup vars
+	 */
+	JDialog errorPopup = null;
+	JPanel popupMenuPanel = null;
+	JLabel errorLabel = null;
 	
 	/**
 	 * Launches file choose to retrieve an image path
@@ -149,6 +156,7 @@ public class ImageLabeller extends JFrame {
     openComboBox.setSelectedItem(chooser.getSelectedFile().toString());
 	}
 
+	//remove a file from quick change dropdown menu
 	private void removeSelectedFileFromList(){
 		openComboBox.removeItem(openComboBox.getSelectedItem());
 		if(openComboBox.getItemCount() == 0){
@@ -158,32 +166,44 @@ public class ImageLabeller extends JFrame {
 		}
 	}
 
+	//change the file being worked on
 	private void changeFileInList(){
 		imagePanel.setImage((String) openComboBox.getSelectedItem());
 	}
 
 	private void addLabelToList(){
+
+		//check to see if polygon is completable
+		if(imagePanel.getCurrentPolygon().size() < 3){
+			errorLabel.setText("Error: label has no shape.");
+			errorPopup.setLocationRelativeTo(this);
+			errorPopup.setVisible(true);
+			return;
+		}
+
+		//save the current polygon
 		curPolygonSave = new ArrayList<Point>();
 		for(int i = 0; i < imagePanel.getCurrentPolygon().size(); i++){
 			curPolygonSave.add(imagePanel.getCurrentPolygon().get(i));
 		}
 
+		//ask for label name
 		imagePanel.addNewPolygon();
 		String str = JOptionPane.showInputDialog(null, "Enter label name : ",
 													"label" + labelCounter, 1);
   		if(str == null || str.equals("")){
   			str = "label" + labelCounter;
   		}
-
   		labelCounter++;
 
+  		//add label to list of labels
   		labelsListModel.addElement(str);
 
   		//create label - polygon pair here
   		labelsList.add(new Label(curPolygonSave, str));
-
   		labelsBox.setSelectedIndex(labelsBox.getModel().getSize() - 1);
 
+  		//enable label buttons
   		if(!editLabelButton.isEnabled()){
   			editLabelButton.setEnabled(true);
   			delLabelButton.setEnabled(true);
@@ -191,26 +211,52 @@ public class ImageLabeller extends JFrame {
 	}
 
 	public void updateSelectedLabel(){
-		
+		int i;
+
+		//if nothing is selected, then return
 		if(labelsBox.isSelectionEmpty()){
 			return;
 		}
 
-		//turn previous label green
-		if(prevLabelIdx != -1 && prevLabelIdx < labelsBox.getModel().getSize()){
-			imagePanel.drawPolygon(labelsList.get(prevLabelIdx).getPolygon(), Color.GREEN, true);
+		//turn previous label(s) green
+		if(prevLabelIndices != null){
+			for(int prevLabelIdx : prevLabelIndices){
+				if(prevLabelIdx != -1 && prevLabelIdx < labelsBox.getModel().getSize()){
+					imagePanel.drawPolygon(labelsList.get(prevLabelIdx).getPolygon(), Color.GREEN, true);
+				}
+			}
 		}
 
-		//make new label and turn it red
-		Label curLabel = labelsList.get(labelsBox.getSelectedIndex());
-		imagePanel.drawPolygon(curLabel.getPolygon(), Color.RED, true);
-		prevLabelIdx = labelsBox.getSelectedIndex();
+		//get all selected labels
+		int [] selectedLabels = labelsBox.getSelectedIndices();
 
-		editLabelButton.setEnabled(true);
+		//make new label(s) and turn it(them) red
+		Label curLabel;
+		for(i = 0; i < selectedLabels.length; i++){
+			curLabel = labelsList.get(selectedLabels[i]);
+			imagePanel.drawPolygon(curLabel.getPolygon(), Color.RED, true);
+		}
+
+		//update previous indices for turning green later
+		prevLabelIndices = new int[selectedLabels.length];
+		for(i = 0; i < selectedLabels.length; i++){
+			prevLabelIndices[i] = selectedLabels[i];
+		}
+
+		//a label is selected, so the label buttons are enabled
+		//if multiple labels are selected, they cannot be edited at once, only deleted
   		delLabelButton.setEnabled(true);
+  		if(selectedLabels.length == 1){
+  			editLabelButton.setEnabled(true);
+  		}
+  		else{
+  			editLabelButton.setEnabled(false);
+  		}
 	}
 
 	public void editLabelText(){
+
+		//bring up prompt to edit label text
 		String str = JOptionPane.showInputDialog(null, "Enter label name : ",
 													"label" + labelCounter, 1);
   		if(str == null || str.equals("")){
@@ -218,21 +264,30 @@ public class ImageLabeller extends JFrame {
   			labelCounter++;
   		}
 
+  		//update label name in stored labels
   		((DefaultListModel)(labelsBox.getModel())).setElementAt(str, labelsBox.getSelectedIndex());
   		labelsList.get(labelsBox.getSelectedIndex()).setLabel(str);
 	}
 
 	public void removeLabelFromImage(){
-		int selIdx = labelsBox.getSelectedIndex();
+		int i;
+
+		//remove the label from the lists
+		int [] selectedLabels = labelsBox.getSelectedIndices();
 		labelsBox.clearSelection();
-		labelsList.remove(selIdx);
-		((DefaultListModel)(labelsBox.getModel())).removeElementAt(selIdx);
+		for(i = selectedLabels.length - 1; i >= 0; i--){
+			labelsList.remove(selectedLabels[i]);
+			((DefaultListModel)(labelsBox.getModel())).removeElementAt(selectedLabels[i]);
+		}
 
-		imagePanel.reloadImage();
+		//reset image to be clear of labels
+		imagePanel.clearLabels();
 
+		//reset polygons list in imagePanel to remove the polygon
+		//corresponding to the label to remove
 		imagePanel.getPolygonsList().clear();
 		ArrayList<Point> temp;
-		for(int i = 0; i < labelsList.size(); i++){
+		for(i = 0; i < labelsList.size(); i++){
 			temp = new ArrayList<Point>();
 
 			for(int j = 0; j < labelsList.get(i).getPolygon().size(); j++){
@@ -242,8 +297,10 @@ public class ImageLabeller extends JFrame {
 			imagePanel.getPolygonsList().add(temp);
 		}
 
+		//redraw all polygons without label
 		imagePanel.drawAllPolygons();
 
+		//nothing is selected, so disable label buttons
 		editLabelButton.setEnabled(false);
   		delLabelButton.setEnabled(false);
 	}
@@ -321,10 +378,25 @@ public class ImageLabeller extends JFrame {
     }
 
 	/**
-	 * handles New Object button action
+	 * handles Cancel Current Label button action
 	 */
-	public void addNewPolygon() {
-		imagePanel.addNewPolygon();
+	public void cancelLabel() {
+
+		//redraw polygons without partial label
+		Label curLabel = null;
+		boolean currentExists = false;
+		if(!labelsBox.isSelectionEmpty()){
+			curLabel = labelsList.get(labelsBox.getSelectedIndex());
+			currentExists = true;
+		}
+		imagePanel.clearLabels();
+		imagePanel.setCurrentPolygon(new ArrayList<Point>());
+		imagePanel.drawAllPolygons();
+
+		//redraw selected label in red
+		if(currentExists){
+			imagePanel.setCurrentPolygon(curLabel.getPolygon());
+		}
 	}
 	
 	@Override
@@ -347,6 +419,42 @@ public class ImageLabeller extends JFrame {
 		    	System.exit(0);
 		  	}
 		});
+
+		//initialize error popup
+		errorPopup = new JDialog(this);
+		popupMenuPanel = new JPanel();
+		errorPopup.setSize(200, 100);
+		popupMenuPanel.setLayout(new BoxLayout(popupMenuPanel, BoxLayout.Y_AXIS));
+		errorPopup.add(popupMenuPanel);
+
+		errorLabel = new JLabel("Error");
+
+		JButton popupCancelButton = new JButton("Cancel");
+		popupCancelButton.setMnemonic(KeyEvent.VK_N);
+		popupCancelButton.setSize(20, 20);
+		popupCancelButton.setEnabled(true);
+		popupCancelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+					errorPopup.setVisible(false);
+			}
+		});
+
+		JButton popupCancelCurLabelButton = new JButton("Cancel current label");
+		popupCancelCurLabelButton.setMnemonic(KeyEvent.VK_N);
+		popupCancelCurLabelButton.setSize(20, 20);
+		popupCancelCurLabelButton.setEnabled(true);
+		popupCancelCurLabelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+					cancelLabel();
+					errorPopup.setVisible(false);
+			}
+		});
+
+		popupMenuPanel.add(errorLabel);
+		popupMenuPanel.add(popupCancelButton);
+		popupMenuPanel.add(popupCancelCurLabelButton);
 
 		//setup main window panel
 		appPanel = new JPanel();
@@ -461,17 +569,17 @@ public class ImageLabeller extends JFrame {
 		});
 		saveLabelledImageButton.setToolTipText("Click to save labelled image");
 
-		JButton newPolyButton = new JButton("New object");
+		JButton newPolyButton = new JButton("Cancel Current Label");
 		newPolyButton.setMnemonic(KeyEvent.VK_N);
 		newPolyButton.setSize(50, 20);
 		newPolyButton.setEnabled(true);
 		newPolyButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	addNewPolygon();
+			    	cancelLabel();
 			}
 		});
-		newPolyButton.setToolTipText("Click to add new object");
+		newPolyButton.setToolTipText("Click to stop current label");
 
 		JButton doneEditingButton = new JButton("Label Done");
 		doneEditingButton.setMnemonic(KeyEvent.VK_N);
