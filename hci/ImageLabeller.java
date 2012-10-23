@@ -27,12 +27,40 @@ import java.util.ArrayList;
 
 import hci.utils.*;
 
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import javax.imageio.ImageIO;
+import hci.utils.Point;
+
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+ 
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 /**
  * Main class of the program - handles display of the main window
  * @author Michal
  *
  */
 public class ImageLabeller extends JFrame {
+	/**
+	 * Image Variables for Saving
+	 */	
+  private BufferedImage bufferedImageSrc = null;
+  private static BufferedImage bufferedImage = null;
+  private static ArrayList<Point> currentPolygon = null;
+  private static ArrayList<ArrayList<Point>> polygonsList = null;
+
 	/**
 	 * some java stuff to get rid of warnings
 	 */
@@ -108,6 +136,15 @@ public class ImageLabeller extends JFrame {
         imagePath = chooser.getSelectedFile().getAbsolutePath().toString();
     }
     imagePanel.setImage(imagePath);
+
+    // Setting Buffer Image variables to perform Save later
+    try {
+          bufferedImageSrc = ImageIO.read(new File(imagePath));
+    			bufferedImage = toBufferedImage(bufferedImageSrc);
+        } catch(IOException e) {
+            System.out.println("Error Buffering Image");
+        }
+
     openComboBox.addItem(chooser.getSelectedFile().toString());
     openComboBox.setSelectedItem(chooser.getSelectedFile().toString());
 	}
@@ -134,7 +171,7 @@ public class ImageLabeller extends JFrame {
 		imagePanel.addNewPolygon();
 		String str = JOptionPane.showInputDialog(null, "Enter label name : ",
 													"label" + labelCounter, 1);
-  		if(str == null){
+  		if(str == null || str.equals("")){
   			str = "label" + labelCounter;
   		}
 
@@ -146,12 +183,21 @@ public class ImageLabeller extends JFrame {
   		labelsList.add(new Label(curPolygonSave, str));
 
   		labelsBox.setSelectedIndex(labelsBox.getModel().getSize() - 1);
+
+  		if(!editLabelButton.isEnabled()){
+  			editLabelButton.setEnabled(true);
+  			delLabelButton.setEnabled(true);
+  		}
 	}
 
 	public void updateSelectedLabel(){
 		
+		if(labelsBox.isSelectionEmpty()){
+			return;
+		}
+
 		//turn previous label green
-		if(prevLabelIdx != -1){
+		if(prevLabelIdx != -1 && prevLabelIdx < labelsBox.getModel().getSize()){
 			imagePanel.drawPolygon(labelsList.get(prevLabelIdx).getPolygon(), Color.GREEN, true);
 		}
 
@@ -159,7 +205,120 @@ public class ImageLabeller extends JFrame {
 		Label curLabel = labelsList.get(labelsBox.getSelectedIndex());
 		imagePanel.drawPolygon(curLabel.getPolygon(), Color.RED, true);
 		prevLabelIdx = labelsBox.getSelectedIndex();
+
+		editLabelButton.setEnabled(true);
+  		delLabelButton.setEnabled(true);
 	}
+
+	public void editLabelText(){
+		String str = JOptionPane.showInputDialog(null, "Enter label name : ",
+													"label" + labelCounter, 1);
+  		if(str == null || str.equals("")){
+  			str = "label" + labelCounter;
+  			labelCounter++;
+  		}
+
+  		((DefaultListModel)(labelsBox.getModel())).setElementAt(str, labelsBox.getSelectedIndex());
+  		labelsList.get(labelsBox.getSelectedIndex()).setLabel(str);
+	}
+
+	public void removeLabelFromImage(){
+		int selIdx = labelsBox.getSelectedIndex();
+		labelsBox.clearSelection();
+		labelsList.remove(selIdx);
+		((DefaultListModel)(labelsBox.getModel())).removeElementAt(selIdx);
+
+		imagePanel.reloadImage();
+
+		imagePanel.getPolygonsList().clear();
+		ArrayList<Point> temp;
+		for(int i = 0; i < labelsList.size(); i++){
+			temp = new ArrayList<Point>();
+
+			for(int j = 0; j < labelsList.get(i).getPolygon().size(); j++){
+				temp.add(labelsList.get(i).getPolygon().get(j));
+			}
+
+			imagePanel.getPolygonsList().add(temp);
+		}
+
+		imagePanel.drawAllPolygons();
+
+		editLabelButton.setEnabled(false);
+  		delLabelButton.setEnabled(false);
+	}
+
+	/**
+	 * Saving functionality
+	 */
+	private void saveLabelledImage(String ext) {
+				String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
+ 
+        //Creates a new directory to store Image and Polygon Coordinates
+        boolean dirSuccess = (new File("./images/"+fileName)).mkdirs();
+        String filePath = "./images/"+fileName+"/"+fileName;
+        File file = new File(filePath + "." + ext);
+        try {
+            ImageIO.write(bufferedImage, ext, file);  // ignore returned boolean
+            System.out.println("Saving File to: " + file.getPath());
+            writePointsToXML(fileName);
+        } catch(IOException e) {
+            System.out.println("Write error for " + file.getPath() +
+                               ": " + e.getMessage());
+        }
+    }
+ 
+    private BufferedImage toBufferedImage(Image src) {
+        int w = src.getWidth(null);
+        int h = src.getHeight(null);
+        int type = BufferedImage.TYPE_INT_RGB;  // other options
+        BufferedImage dest = new BufferedImage(w, h, type);
+        Graphics2D g2 = dest.createGraphics();
+        g2.drawImage(src, 0, 0, null);
+        g2.dispose();
+        return dest;
+    }
+
+
+    private void writePointsToXML(String fileName){
+   		try {
+   			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+				Document doc = docBuilder.newDocument();
+				
+				Element rootElement = doc.createElement(fileName);
+				doc.appendChild(rootElement);
+
+				Element label;
+				Element point;
+				for (int i = 0; i < labelsList.size(); i++) {
+					label = doc.createElement("Label");
+					label.setAttribute("Name", labelsList.get(i).getLabel());
+					rootElement.appendChild(label);
+
+					for (int j = 0; j < labelsList.get(i).getPolygon().size(); j++) {
+						point = doc.createElement("Point");
+						point.setAttribute("X", ((Integer)labelsList.get(i).getPolygon().get(j).getX()).toString());
+						point.setAttribute("Y", ((Integer)labelsList.get(i).getPolygon().get(j).getY()).toString());
+						label.appendChild(point);
+					}
+				}
+				// write the content into xml file
+				TransformerFactory transformerFactory = TransformerFactory.newInstance();
+				Transformer transformer = transformerFactory.newTransformer();
+				DOMSource source = new DOMSource(doc);
+				StreamResult result = new StreamResult(new File("./images/" + fileName + "/" + fileName + ".xml"));
+		 
+				transformer.transform(source, result);
+		 
+				System.out.println("File saved!");
+ 
+   		} catch (ParserConfigurationException pce) {
+				pce.printStackTrace();
+	  	} catch (TransformerException tfe) {
+				tfe.printStackTrace();
+	  	}
+    }
 
 	/**
 	 * handles New Object button action
@@ -220,6 +379,7 @@ public class ImageLabeller extends JFrame {
 		openButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
+					//TODO: SAVE OLD FILE HERE BEFORE ADDING NEW ONE
 			    	launchFileChooser();
 			}
 		});
@@ -232,6 +392,7 @@ public class ImageLabeller extends JFrame {
 		delButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
+					//TODO: SAVE FILE BEFORE REMOVING
 			    	removeSelectedFileFromList();
 			}
 		});
@@ -288,6 +449,18 @@ public class ImageLabeller extends JFrame {
 		});
 		openImageButton.setToolTipText("Click to open a new image");
 
+		JButton saveLabelledImageButton = new JButton("Save");
+		saveLabelledImageButton.setMnemonic(KeyEvent.VK_N);
+		saveLabelledImageButton.setSize(50, 20);
+		saveLabelledImageButton.setEnabled(true);
+		saveLabelledImageButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	saveLabelledImage("jpg");
+			}
+		});
+		saveLabelledImageButton.setToolTipText("Click to save labelled image");
+
 		JButton newPolyButton = new JButton("New object");
 		newPolyButton.setMnemonic(KeyEvent.VK_N);
 		newPolyButton.setSize(50, 20);
@@ -312,6 +485,7 @@ public class ImageLabeller extends JFrame {
 		});
 		doneEditingButton.setToolTipText("Click when finished editing label");
 		
+		rightToolboxPanel.add(saveLabelledImageButton);
 		rightToolboxPanel.add(openImageButton);
 		rightToolboxPanel.add(newPolyButton);
 		rightToolboxPanel.add(doneEditingButton);
@@ -333,7 +507,7 @@ public class ImageLabeller extends JFrame {
 		editLabelButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	//edit label function
+			    	editLabelText();
 			}
 		});
 		editLabelButton.setToolTipText("Click to edit a label");
@@ -345,7 +519,7 @@ public class ImageLabeller extends JFrame {
 		delLabelButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	//delete label function
+			    	removeLabelFromImage();
 			}
 		});
 		editLabelButton.setToolTipText("Click to remove a label");

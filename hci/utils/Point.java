@@ -33,4 +33,8 @@ public class Point {
 		this.y = y;
 	}
 	
+	@Override
+	public String toString(){
+		return ((Integer)this.x).toString() + " " + ((Integer)this.y).toString();
+	}
 }

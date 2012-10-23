@@ -26,7 +26,6 @@ public class ImagePanel extends JPanel implements MouseListener {
 	 * some java stuff to get rid of warnings
 	 */
 	private static final long serialVersionUID = 1L;
-
 	/**
 	 * image to be tagged
 	 */
@@ -41,6 +40,11 @@ public class ImagePanel extends JPanel implements MouseListener {
 	 * list of polygons
 	 */
 	ArrayList<ArrayList<Point>> polygonsList = null;
+
+	/**
+	 * hold the current image name for easy reloading
+	 */
+	String imageNameSave = "";
 	
 	/**
 	 * default constructor, sets up the window properties
@@ -140,7 +144,7 @@ public class ImagePanel extends JPanel implements MouseListener {
 	 * @param polygon to be finished
 	 */
 	public void finishPolygon(ArrayList<Point> polygon) {
-		//if there are less than 3 vertices than nothing to be completed
+		//if there are less than 3 vertices then nothing to be completed
 		if (polygon.size() >= 3) {
 			Point firstVertex = polygon.get(0);
 			Point lastVertex = polygon.get(polygon.size() - 1);
@@ -207,10 +211,14 @@ public class ImagePanel extends JPanel implements MouseListener {
 	public void mouseReleased(MouseEvent arg0) {
 	}
 	
-
+	// Getter
+	public ArrayList<ArrayList<Point>> getPolygonsList(){
+		return polygonsList;
+	}
 	// Setter used to load new image
 	public void setImage(String imageName) {
 		try{
+			imageNameSave = imageName;
 			image = ImageIO.read(new File(imageName));	
 		} catch (Exception e) {
 			System.err.println("Image Error");
@@ -227,4 +235,13 @@ public class ImagePanel extends JPanel implements MouseListener {
 		}
 	}
 
+	public void reloadImage(){
+		setImage(imageNameSave);
+	}
+
+	public void drawAllPolygons(){
+		for(int i = 0; i < polygonsList.size(); i++){
+			drawPolygon(polygonsList.get(i), Color.GREEN, true);
+		}
+	}
 }
