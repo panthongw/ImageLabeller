@@ -46,6 +46,9 @@ import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
+import org.w3c.dom.Element;
 
 /**
  * Main class of the program - handles display of the main window
@@ -59,7 +62,7 @@ public class ImageLabeller extends JFrame {
   private BufferedImage bufferedImageSrc = null;
   private static BufferedImage bufferedImage = null;
   private static ArrayList<Point> currentPolygon = null;
-  private static ArrayList<ArrayList<Point>> polygonsList = null;
+  private ArrayList<ArrayList<Point>> polygonsList;
 
 	/**
 	 * some java stuff to get rid of warnings
@@ -133,16 +136,32 @@ public class ImageLabeller extends JFrame {
 	 * Launches file choose to retrieve an image path
 	*/
 	public void launchFileChooser(){
-		String imagePath = null;
+		String filePath = "";
+		String fileExt = "";
 		JFileChooser chooser = new JFileChooser();
-    FileNameExtensionFilter filter = new FileNameExtensionFilter(
-        "JPG & GIF Images", "jpg", "gif");
+		
+		//Sets File Filter that is allowed to be opened
+		FileNameExtensionFilter filter = new FileNameExtensionFilter(
+      "JPG & GIF Images", "jpg", "gif", "lbl");	
     chooser.setFileFilter(filter);
     int returnVal = chooser.showOpenDialog(this);
     if(returnVal == JFileChooser.APPROVE_OPTION) {
-        imagePath = chooser.getSelectedFile().getAbsolutePath().toString();
+        filePath = chooser.getSelectedFile().getAbsolutePath().toString();
     }
-    imagePanel.setImage(imagePath);
+    
+    //Determines which follow up function to call
+		fileExt = filePath.substring((filePath.lastIndexOf(".")+1), filePath.length());
+		System.out.println("File Type Chosen: " + fileExt);
+		if(fileExt.equals("lbl")){
+			openLBLFile(filePath);
+		}
+		else{
+			openImage(filePath);
+		}
+	}
+
+	public void openImage(String imagePath){
+		imagePanel.setImage(imagePath);
 
     // Setting Buffer Image variables to perform Save later
     try {
@@ -152,8 +171,9 @@ public class ImageLabeller extends JFrame {
             System.out.println("Error Buffering Image");
         }
 
-    openComboBox.addItem(chooser.getSelectedFile().toString());
-    openComboBox.setSelectedItem(chooser.getSelectedFile().toString());
+      // Adds to quick navigation drop down menu
+	    openComboBox.addItem(imagePath);
+	    openComboBox.setSelectedItem(imagePath);
 	}
 
 	//remove a file from quick change dropdown menu
@@ -164,11 +184,6 @@ public class ImageLabeller extends JFrame {
 		} else{
 			imagePanel.setImage((String) openComboBox.getSelectedItem());
 		}
-	}
-
-	//change the file being worked on
-	private void changeFileInList(){
-		imagePanel.setImage((String) openComboBox.getSelectedItem());
 	}
 
 	private void addLabelToList(){
@@ -318,7 +333,7 @@ public class ImageLabeller extends JFrame {
         try {
             ImageIO.write(bufferedImage, ext, file);  // ignore returned boolean
             System.out.println("Saving File to: " + file.getPath());
-            writePointsToXML(fileName);
+            writePointsToXML(fileName, file.getPath());
         } catch(IOException e) {
             System.out.println("Write error for " + file.getPath() +
                                ": " + e.getMessage());
@@ -337,13 +352,14 @@ public class ImageLabeller extends JFrame {
     }
 
 
-    private void writePointsToXML(String fileName){
+    private void writePointsToXML(String fileName, String imageFilePath){
    		try {
    			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 				DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
 				Document doc = docBuilder.newDocument();
 				
 				Element rootElement = doc.createElement(fileName);
+				rootElement.setAttribute("ImagePath", imageFilePath);
 				doc.appendChild(rootElement);
 
 				Element label;
@@ -364,7 +380,7 @@ public class ImageLabeller extends JFrame {
 				TransformerFactory transformerFactory = TransformerFactory.newInstance();
 				Transformer transformer = transformerFactory.newTransformer();
 				DOMSource source = new DOMSource(doc);
-				StreamResult result = new StreamResult(new File("./images/" + fileName + "/" + fileName + ".xml"));
+				StreamResult result = new StreamResult(new File("./images/" + fileName + "/" + fileName + ".lbl"));
 		 
 				transformer.transform(source, result);
 		 
@@ -376,6 +392,67 @@ public class ImageLabeller extends JFrame {
 				tfe.printStackTrace();
 	  	}
     }
+   /**
+	 * Handles Opening of Files
+	 */
+    public void openLBLFile(String filePath){
+			try {
+				ArrayList<Label> extractedLabelsList = new ArrayList<Label>();
+				ArrayList<Point> tmpPolygon;
+				Label tmpLabel;
+				Point tmpPoint;
+				String imagePath = "";
+				String tmpLabelName = "";
+				Element labelElement = null;
+				Element pointElement = null;
+				Node labelNode = null;
+				Node pointNode = null;
+				NodeList labelNodeList = null; 
+				NodeList pointNodeList = null;
+
+				File fXmlFile = new File(filePath);
+				DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+				Document doc = dBuilder.parse(fXmlFile);
+				
+				doc.getDocumentElement().normalize();
+		 		
+		 		//Opening associated Image to the LBL file
+		 		imagePath = doc.getDocumentElement().getAttribute("ImagePath");
+		 		openImage(imagePath);
+
+				labelNodeList = doc.getElementsByTagName("Label");
+		 		polygonsList = new ArrayList<ArrayList<Point>>();
+				for (int i = 0; i < labelNodeList.getLength(); i++) {
+				 labelNode = labelNodeList.item(i);
+			   tmpPolygon = new ArrayList<Point>();
+			   if (labelNode.getNodeType() == Node.ELEMENT_NODE) {
+			      labelElement = (Element) labelNode;
+			      tmpLabelName = labelElement.getAttribute("Name");
+			      ((DefaultListModel)(labelsBox.getModel())).addElement((Object)tmpLabelName);
+			      pointNodeList = labelElement.getChildNodes();
+			      
+	 					for (int j = 0; j < pointNodeList.getLength(); j++) {
+	 						pointNode = pointNodeList.item(j);
+	 						pointElement = (Element) pointNode;
+	 						if (pointNode.getNodeType() == Node.ELEMENT_NODE) {
+	 							tmpPoint = new Point(Integer.parseInt(pointElement.getAttribute("X")), Integer.parseInt(pointElement.getAttribute("Y")));
+	 							tmpPolygon.add(tmpPoint);
+	 						}
+	 						polygonsList.add(tmpPolygon);	
+	 					}   
+			   }
+			   tmpLabel = new Label(tmpPolygon, tmpLabelName);
+			   extractedLabelsList.add(tmpLabel);
+			}
+
+			labelsList = extractedLabelsList;
+			imagePanel.setPolygonsList(polygonsList);
+			imagePanel.drawAllPolygons();
+	  } catch (Exception e) {
+			e.printStackTrace();
+	  }
+	}
 
 	/**
 	 * handles Cancel Current Label button action
@@ -462,56 +539,6 @@ public class ImageLabeller extends JFrame {
 		this.setLayout(new BoxLayout(appPanel, BoxLayout.Y_AXIS));
 		this.setContentPane(appPanel);
 
- 
-		//create top toolbox panel
-        topToolboxPanel = new JPanel();
-        
-        //Add combobox
-		openComboBox = new JComboBox();
-		openComboBox.setSize(550,25);
-		openComboBox.addItemListener(new ItemListener(){
-			@Override
-			public void itemStateChanged(ItemEvent e){
-				changeFileInList();
-			}
-		});
-		openComboBox.setToolTipText("Switch between open files");
-		
-		topToolboxPanel.add(openComboBox);
-
-		//add buttons
-		JButton openButton = new JButton("+");
-		openButton.setMnemonic(KeyEvent.VK_N);
-		openButton.setSize(20, 20);
-		openButton.setEnabled(true);
-		openButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-					//TODO: SAVE OLD FILE HERE BEFORE ADDING NEW ONE
-			    	launchFileChooser();
-			}
-		});
-		openButton.setToolTipText("Click to open a new image");
-		
-		JButton delButton = new JButton("-");
-		delButton.setMnemonic(KeyEvent.VK_N);
-		delButton.setSize(20, 20);
-		delButton.setEnabled(true);
-		delButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-					//TODO: SAVE FILE BEFORE REMOVING
-			    	removeSelectedFileFromList();
-			}
-		});
-		delButton.setToolTipText("Click to remove the current image");
-
-		topToolboxPanel.add(openButton);
-		topToolboxPanel.add(delButton);
-
-		//add toolbox to window
-		appPanel.add(topToolboxPanel);
-		
 
 		//create middle panel with image and sidebar
 		middlePanel = new JPanel();
@@ -555,7 +582,7 @@ public class ImageLabeller extends JFrame {
 			    	launchFileChooser();
 			}
 		});
-		openImageButton.setToolTipText("Click to open a new image");
+		openImageButton.setToolTipText("Click to open a new image or existing labelled image");
 
 		JButton saveLabelledImageButton = new JButton("Save");
 		saveLabelledImageButton.setMnemonic(KeyEvent.VK_N);
