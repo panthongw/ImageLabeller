@@ -125,18 +125,51 @@ public class ImageLabeller extends JFrame {
 	 */
 	private static int labelCounter = 0;
 	
+	private void clearMemory(){
+		//Clears out information pretaining to previous project
+			labelsBox.removeAll();
+			//labelsBox.clearSelection();
+			labelsList.clear();
+			((DefaultListModel)(labelsBox.getModel())).clear();
+			imagePanel.getPolygonsList().clear();
+			imagePanel.reloadImage();
+			imagePanel.drawAllPolygons();
+			fileInfo = null;
+	}
+
 	/**
 	 * Launches file choose to retrieve an image path
 	*/
-	public void launchFileChooser(){
+	public void launchFileChooser(String openAction){
 		String filePath = "";
 		String fileExt = "";
 		JFileChooser chooser = new JFileChooser();
+		FileNameExtensionFilter filter;
 		
-		//Sets File Filter that is allowed to be opened
-		FileNameExtensionFilter filter = new FileNameExtensionFilter(
-      "JPG & GIF Images", "jpg", "gif", "lbl");	
-    chooser.setFileFilter(filter);
+		if (openAction.equals("NEW")) {
+			labelsBox.removeAll();
+			//labelsBox.clearSelection();
+			labelsList.clear();
+			((DefaultListModel)(labelsBox.getModel())).clear();
+			imagePanel.getPolygonsList().clear();
+			imagePanel.drawAllPolygons();
+			fileInfo = null;
+			//Sets File Filter that is allowed to be opened
+			filter = new FileNameExtensionFilter("JPG & GIF Images", "jpg", "gif");	
+    	chooser.setFileFilter(filter);
+		}
+		else{
+			// Opening existing project
+			labelsBox.removeAll();
+			//labelsBox.clearSelection();
+			labelsList.clear();
+			fileInfo = null;
+			((DefaultListModel)(labelsBox.getModel())).clear();
+			filter = new FileNameExtensionFilter("Label Files", "lbl");
+			chooser.setFileFilter(filter);
+			chooser.setCurrentDirectory(new File("./projects/"));
+		}
+
     int returnVal = chooser.showOpenDialog(this);
     if(returnVal == JFileChooser.APPROVE_OPTION) {
         filePath = chooser.getSelectedFile().getAbsolutePath().toString();
@@ -272,13 +305,17 @@ public class ImageLabeller extends JFrame {
 	 * Saving functionality
 	 */
 		private void saveNewLabelledImage(String ext) {
-				//String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
- 				JFileChooser chooser = new JFileChooser();
- 				chooser.showSaveDialog(this);
-        //Creates a new directory to store Image and Polygon Coordinates
-        boolean dirSuccess = (new File("./images/"+fileName)).mkdirs();
-        String filePath = "./images/"+fileName+"/"+fileName;
-        File file = new File(filePath + "." + ext);
+				String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
+ 				File projectDir = new File("./projects");
+ 				File imageDir = new File("./projects/images");
+ 				String filePath = "./projects/images/";
+
+ 				//Creates a new directory to store Projects lbl files and new directory for corresponding Images
+ 				if(!projectDir.exists()){
+ 					projectDir.mkdirs();
+ 					imageDir.mkdirs();
+ 				}
+        File file = new File(filePath + fileName + "." + ext);
         try {
             ImageIO.write(bufferedImage, ext, file);  // ignore returned boolean
             System.out.println("Saving File to: " + file.getPath());
@@ -310,7 +347,7 @@ public class ImageLabeller extends JFrame {
    			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 				DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
 				Document doc = docBuilder.newDocument();
-				String lblFilePath = ("./images/" + fileName + "/" + fileName + ".lbl");
+				String lblFilePath = ("./projects/"+ fileName + ".lbl");
 				Element rootElement = doc.createElement(fileName);
 
 				fileInfo = new FileInfo(lblFilePath, imageFilePath, fileName); // Tracks information for saving existing file
@@ -520,7 +557,6 @@ public class ImageLabeller extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 			    	saveNewLabelledImage("jpg");
-			    	launchFileChooser();
 			}
 		});
 		openButton.setToolTipText("Click to open a new image");
@@ -577,17 +613,29 @@ public class ImageLabeller extends JFrame {
 		rightToolboxPanel.add(labelsPane);
 		
         //Add buttons
-		JButton openImageButton = new JButton("Open Image");
-		openImageButton.setMnemonic(KeyEvent.VK_N);
-		openImageButton.setSize(50, 20);
-		openImageButton.setEnabled(true);
-		openImageButton.addActionListener(new ActionListener() {
+		JButton newProjectButton = new JButton("New Project");
+		newProjectButton.setMnemonic(KeyEvent.VK_N);
+		newProjectButton.setSize(50, 20);
+		newProjectButton.setEnabled(true);
+		newProjectButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	launchFileChooser();
+			    	launchFileChooser("NEW");
 			}
 		});
-		openImageButton.setToolTipText("Click to open a new image or existing labelled image");
+		newProjectButton.setToolTipText("Click to select an image for a new project");
+
+		JButton openProjectButton = new JButton("Open Project");
+		openProjectButton.setMnemonic(KeyEvent.VK_N);
+		openProjectButton.setSize(50, 20);
+		openProjectButton.setEnabled(true);
+		openProjectButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+			    	launchFileChooser("EXISTING");
+			}
+		});
+		openProjectButton.setToolTipText("Click to open an existing project");
 
 		JButton saveNewLabelledImageButton = new JButton("Save");
 		saveNewLabelledImageButton.setMnemonic(KeyEvent.VK_N);
@@ -631,7 +679,8 @@ public class ImageLabeller extends JFrame {
 		doneEditingButton.setToolTipText("Click when finished editing label");
 		
 		rightToolboxPanel.add(saveNewLabelledImageButton);
-		rightToolboxPanel.add(openImageButton);
+		rightToolboxPanel.add(newProjectButton);
+		rightToolboxPanel.add(openProjectButton);
 		rightToolboxPanel.add(newPolyButton);
 		rightToolboxPanel.add(doneEditingButton);
 		
