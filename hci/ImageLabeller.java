@@ -271,9 +271,10 @@ public class ImageLabeller extends JFrame {
 	/**
 	 * Saving functionality
 	 */
-	private void saveNewLabelledImage(String ext) {
-				String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
- 				
+		private void saveNewLabelledImage(String ext) {
+				//String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
+ 				JFileChooser chooser = new JFileChooser();
+ 				chooser.showSaveDialog(this);
         //Creates a new directory to store Image and Polygon Coordinates
         boolean dirSuccess = (new File("./images/"+fileName)).mkdirs();
         String filePath = "./images/"+fileName+"/"+fileName;
