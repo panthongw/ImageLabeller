@@ -670,6 +670,7 @@ public class ImageLabeller extends JFrame {
 		topToolboxPanel.add(newProjectButton);
 		topToolboxPanel.add(openProjectButton);
 		topToolboxPanel.add(saveNewLabelledImageButton);
+		topToolboxPanel.add(new JSeparator(SwingConstants.VERTICAL), BorderLayout.WEST);
 		
 		//add toolbox to window
 		appPanel.add(topToolboxPanel);
