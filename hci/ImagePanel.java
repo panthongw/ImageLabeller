@@ -67,6 +67,13 @@ public class ImagePanel extends JPanel implements MouseListener {
 	public ArrayList<Point> getCurrentPolygon(){
 		return currentPolygon;
 	}
+
+	public void setCurrentPolygon(ArrayList<Point> newCurPoly){
+		currentPolygon = new ArrayList<Point>();
+		for(Point p : newCurPoly){
+			currentPolygon.add(p);
+		}
+	}
 	
 	/**
 	 * extended constructor - loads image to be labelled
@@ -103,17 +110,19 @@ public class ImagePanel extends JPanel implements MouseListener {
 	public void paint(Graphics g) {
 		super.paint(g);
 		
-		//display iamge
+		//display image
 		ShowImage();
 		
 		//display all the completed polygons
 		for(ArrayList<Point> polygon : polygonsList) {
-			drawPolygon(polygon, Color.GREEN, false);
+			drawPolygon(polygon, Color.GREEN, true);
 			finishPolygon(polygon);
 		}
 		
 		//display current polygon
-		drawPolygon(currentPolygon, Color.GREEN, false);
+		drawPolygon(currentPolygon, Color.RED, true);
+
+		currentPolygon = new ArrayList<Point>();
 	}
 	
 	/**
@@ -121,6 +130,10 @@ public class ImagePanel extends JPanel implements MouseListener {
 	 * @param polygon to be displayed
 	 */
 	public void drawPolygon(ArrayList<Point> polygon, Color color, boolean forSwitch) {
+		if(polygon == null || polygon.size() == 0){
+			return;
+		}
+
 		Graphics2D g = (Graphics2D)this.getGraphics();
 		g.setColor(color);
 		for(int i = 0; i < polygon.size(); i++) {
@@ -235,7 +248,7 @@ public class ImagePanel extends JPanel implements MouseListener {
 		}
 	}
 
-	public void reloadImage(){
+	public void clearLabels(){
 		setImage(imageNameSave);
 	}
 	public void setPolygonsList(ArrayList<ArrayList<Point>> polygons){
