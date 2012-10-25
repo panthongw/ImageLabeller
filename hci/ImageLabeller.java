@@ -148,8 +148,8 @@ public class ImageLabeller extends JFrame {
 		
 		if (openAction.equals("NEW")) {
 			labelsBox.removeAll();
-			//labelsBox.clearSelection();
 			labelsList.clear();
+			labelCounter = 0;
 			((DefaultListModel)(labelsBox.getModel())).clear();
 			imagePanel.getPolygonsList().clear();
 			imagePanel.drawAllPolygons();
@@ -161,8 +161,8 @@ public class ImageLabeller extends JFrame {
 		else{
 			// Opening existing project
 			labelsBox.removeAll();
-			//labelsBox.clearSelection();
 			labelsList.clear();
+			labelCounter = 0;
 			fileInfo = null;
 			((DefaultListModel)(labelsBox.getModel())).clear();
 			filter = new FileNameExtensionFilter("Label Files", "lbl");
@@ -313,7 +313,9 @@ public class ImageLabeller extends JFrame {
  				//Creates a new directory to store Projects lbl files and new directory for corresponding Images
  				if(!projectDir.exists()){
  					projectDir.mkdirs();
- 					imageDir.mkdirs();
+ 					if (!imageDir.exists()) {
+ 						imageDir.mkdirs();	
+ 					}
  				}
         File file = new File(filePath + fileName + "." + ext);
         try {
