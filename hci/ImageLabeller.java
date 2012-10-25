@@ -63,7 +63,7 @@ public class ImageLabeller extends JFrame {
   private static BufferedImage bufferedImage = null;
   private static ArrayList<Point> currentPolygon = null;
   private ArrayList<ArrayList<Point>> polygonsList;
-
+  private FileInfo fileInfo =  null;
 	/**
 	 * some java stuff to get rid of warnings
 	 */
@@ -271,9 +271,9 @@ public class ImageLabeller extends JFrame {
 	/**
 	 * Saving functionality
 	 */
-	private void saveLabelledImage(String ext) {
+	private void saveNewLabelledImage(String ext) {
 				String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
- 
+ 				
         //Creates a new directory to store Image and Polygon Coordinates
         boolean dirSuccess = (new File("./images/"+fileName)).mkdirs();
         String filePath = "./images/"+fileName+"/"+fileName;
@@ -287,7 +287,11 @@ public class ImageLabeller extends JFrame {
                                ": " + e.getMessage());
         }
     }
- 
+ 		
+    private void saveLabelledImage() {
+        overwritePointsToXML();
+    }
+
     private BufferedImage toBufferedImage(Image src) {
         int w = src.getWidth(null);
         int h = src.getHeight(null);
@@ -305,9 +309,14 @@ public class ImageLabeller extends JFrame {
    			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 				DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
 				Document doc = docBuilder.newDocument();
-				
+				String lblFilePath = ("./images/" + fileName + "/" + fileName + ".lbl");
 				Element rootElement = doc.createElement(fileName);
+
+				fileInfo = new FileInfo(lblFilePath, imageFilePath, fileName); // Tracks information for saving existing file
+
 				rootElement.setAttribute("ImagePath", imageFilePath);
+				rootElement.setAttribute("LBLPath", lblFilePath);
+				rootElement.setAttribute("FileName", fileName);
 				doc.appendChild(rootElement);
 
 				Element label;
@@ -328,7 +337,7 @@ public class ImageLabeller extends JFrame {
 				TransformerFactory transformerFactory = TransformerFactory.newInstance();
 				Transformer transformer = transformerFactory.newTransformer();
 				DOMSource source = new DOMSource(doc);
-				StreamResult result = new StreamResult(new File("./images/" + fileName + "/" + fileName + ".lbl"));
+				StreamResult result = new StreamResult(new File(lblFilePath));
 		 
 				transformer.transform(source, result);
 		 
@@ -340,17 +349,62 @@ public class ImageLabeller extends JFrame {
 				tfe.printStackTrace();
 	  	}
     }
+
+    private void overwritePointsToXML(){
+    	try {
+   			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+				Document doc = docBuilder.newDocument();
+				Element rootElement = doc.createElement(fileInfo.getFileName());
+
+				rootElement.setAttribute("ImagePath", fileInfo.getImageFilePath());
+				rootElement.setAttribute("LBLPath", fileInfo.getLBLFilePath());
+				rootElement.setAttribute("FileName", fileInfo.getFileName());
+				doc.appendChild(rootElement);
+
+				Element label;
+				Element point;
+				for (int i = 0; i < labelsList.size(); i++) {
+					label = doc.createElement("Label");
+					label.setAttribute("Name", labelsList.get(i).getLabel());
+					rootElement.appendChild(label);
+
+					for (int j = 0; j < labelsList.get(i).getPolygon().size(); j++) {
+						point = doc.createElement("Point");
+						point.setAttribute("X", ((Integer)labelsList.get(i).getPolygon().get(j).getX()).toString());
+						point.setAttribute("Y", ((Integer)labelsList.get(i).getPolygon().get(j).getY()).toString());
+						label.appendChild(point);
+					}
+				}
+				// write the content into xml file
+				TransformerFactory transformerFactory = TransformerFactory.newInstance();
+				Transformer transformer = transformerFactory.newTransformer();
+				DOMSource source = new DOMSource(doc);
+				StreamResult result = new StreamResult(new File(fileInfo.getLBLFilePath()));
+		 
+				transformer.transform(source, result);
+		 
+				System.out.println("File saved!");
+ 
+   		} catch (ParserConfigurationException pce) {
+				pce.printStackTrace();
+	  	} catch (TransformerException tfe) {
+				tfe.printStackTrace();
+	  	}
+    }
+
    /**
 	 * Handles Opening of Files
 	 */
-    public void openLBLFile(String filePath){
+    public void openLBLFile(String lblFilePath){
 			try {
 				ArrayList<Label> extractedLabelsList = new ArrayList<Label>();
 				ArrayList<Point> tmpPolygon;
 				Label tmpLabel;
 				Point tmpPoint;
-				String imagePath = "";
+				String imageFilePath = "";
 				String tmpLabelName = "";
+				String fileName = "";
 				Element labelElement = null;
 				Element pointElement = null;
 				Node labelNode = null;
@@ -358,7 +412,7 @@ public class ImageLabeller extends JFrame {
 				NodeList labelNodeList = null; 
 				NodeList pointNodeList = null;
 
-				File fXmlFile = new File(filePath);
+				File fXmlFile = new File(lblFilePath);
 				DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 				DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 				Document doc = dBuilder.parse(fXmlFile);
@@ -366,8 +420,12 @@ public class ImageLabeller extends JFrame {
 				doc.getDocumentElement().normalize();
 		 		
 		 		//Opening associated Image to the LBL file
-		 		imagePath = doc.getDocumentElement().getAttribute("ImagePath");
-		 		openImage(imagePath);
+		 		imageFilePath = doc.getDocumentElement().getAttribute("ImagePath");
+		 		openImage(imageFilePath);
+
+		 		fileName = doc.getDocumentElement().getAttribute("FileName");
+
+		 		fileInfo = new FileInfo(lblFilePath, imageFilePath, fileName);
 
 				labelNodeList = doc.getElementsByTagName("Label");
 		 		polygonsList = new ArrayList<ArrayList<Point>>();
@@ -393,7 +451,6 @@ public class ImageLabeller extends JFrame {
 			   tmpLabel = new Label(tmpPolygon, tmpLabelName);
 			   extractedLabelsList.add(tmpLabel);
 			}
-
 			labelsList = extractedLabelsList;
 			imagePanel.setPolygonsList(polygonsList);
 			imagePanel.drawAllPolygons();
@@ -461,7 +518,7 @@ public class ImageLabeller extends JFrame {
 		openButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	saveLabelledImage("jpg");
+			    	saveNewLabelledImage("jpg");
 			    	launchFileChooser();
 			}
 		});
@@ -531,17 +588,22 @@ public class ImageLabeller extends JFrame {
 		});
 		openImageButton.setToolTipText("Click to open a new image or existing labelled image");
 
-		JButton saveLabelledImageButton = new JButton("Save");
-		saveLabelledImageButton.setMnemonic(KeyEvent.VK_N);
-		saveLabelledImageButton.setSize(50, 20);
-		saveLabelledImageButton.setEnabled(true);
-		saveLabelledImageButton.addActionListener(new ActionListener() {
+		JButton saveNewLabelledImageButton = new JButton("Save");
+		saveNewLabelledImageButton.setMnemonic(KeyEvent.VK_N);
+		saveNewLabelledImageButton.setSize(50, 20);
+		saveNewLabelledImageButton.setEnabled(true);
+		saveNewLabelledImageButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	saveLabelledImage("jpg");
+						if (fileInfo != null) {
+							saveLabelledImage();
+						}
+			    	else{
+			    		saveNewLabelledImage("jpg");	
+			    	}
 			}
 		});
-		saveLabelledImageButton.setToolTipText("Click to save labelled image");
+		saveNewLabelledImageButton.setToolTipText("Click to save labelled image");
 
 		JButton newPolyButton = new JButton("New object");
 		newPolyButton.setMnemonic(KeyEvent.VK_N);
@@ -567,7 +629,7 @@ public class ImageLabeller extends JFrame {
 		});
 		doneEditingButton.setToolTipText("Click when finished editing label");
 		
-		rightToolboxPanel.add(saveLabelledImageButton);
+		rightToolboxPanel.add(saveNewLabelledImageButton);
 		rightToolboxPanel.add(openImageButton);
 		rightToolboxPanel.add(newPolyButton);
 		rightToolboxPanel.add(doneEditingButton);
