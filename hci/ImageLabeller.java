@@ -78,7 +78,6 @@ public class ImageLabeller extends JFrame {
 	 * toolbox - put all buttons and stuff in these two toolboxes
 	 */
 	JPanel topToolboxPanel = null;
-	JPanel bottomToolboxPanel = null;
 	JPanel rightToolboxPanel = null;
 	
 	/**
@@ -89,7 +88,7 @@ public class ImageLabeller extends JFrame {
 	/**
 	 * middle panel - holds image and middletoolbox panels
 	 */
-	JPanel middlePanel = null;
+	JPanel mainPanel = null;
 
 	/**
 	 * buttons to delete and edit labels
@@ -126,6 +125,11 @@ public class ImageLabeller extends JFrame {
 	JDialog errorPopup = null;
 	JPanel popupMenuPanel = null;
 	JLabel errorLabel = null;
+
+	//need to draw in paint because don't show up otherwise
+	JButton	newProjectButton,
+		openProjectButton,
+		saveNewLabelledImageButton;
 	
 	/**
 	 * Launches file choose to retrieve an image path
@@ -325,19 +329,22 @@ public class ImageLabeller extends JFrame {
 	/**
 	 * Saving functionality
 	 */
-		private void saveNewLabelledImage(String ext) {
-				String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
- 				File projectDir = new File("./projects");
- 				File imageDir = new File("./projects/images");
- 				String filePath = "./projects/images/";
+	private void saveNewLabelledImage(String ext) {
+		String fileName = JOptionPane.showInputDialog(null, "Enter File Name: ", "", 1);
+		if(fileName == null || fileName.equals("")){
+			return;
+		}
+		File projectDir = new File("./projects");
+		File imageDir = new File("./projects/images");
+		String filePath = "./projects/images/";
 
- 				//Creates a new directory to store Projects lbl files and new directory for corresponding Images
- 				if(!projectDir.exists()){
- 					projectDir.mkdirs();
- 					if (!imageDir.exists()) {
- 						imageDir.mkdirs();	
- 					}
- 				}
+		//Creates a new directory to store Projects lbl files and new directory for corresponding Images
+		if(!projectDir.exists()){
+			projectDir.mkdirs();
+			if (!imageDir.exists()) {
+				imageDir.mkdirs();	
+			}
+		}
         File file = new File(filePath + fileName + "." + ext);
         try {
             ImageIO.write(bufferedImage, ext, file);  // ignore returned boolean
@@ -363,7 +370,6 @@ public class ImageLabeller extends JFrame {
         g2.dispose();
         return dest;
     }
-
 
     private void writePointsToXML(String fileName, String imageFilePath){
    		try {
@@ -587,8 +593,7 @@ public class ImageLabeller extends JFrame {
 		popupCancelButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-			    	saveNewLabelledImage("jpg");
-					//errorPopup.setVisible(false);
+			    	errorPopup.setVisible(false);
 			}
 		});
 
@@ -614,33 +619,13 @@ public class ImageLabeller extends JFrame {
 		this.setLayout(new BoxLayout(appPanel, BoxLayout.Y_AXIS));
 		this.setContentPane(appPanel);
 
-
-		//create middle panel with image and sidebar
-		middlePanel = new JPanel();
-
-        //Create and set up the image panel.
-		imagePanel = new ImagePanel("./images/default_image.png");
-		imagePanel.setOpaque(true); //content panes must be opaque
-
-		middlePanel.add(imagePanel);
-
-		rightToolboxPanel = new JPanel();
-		rightToolboxPanel.setLayout(new BoxLayout(rightToolboxPanel, BoxLayout.Y_AXIS));
-
-		//add labels list
-		labelsBox = new JList(labelsListModel);
-		labelsBox.setSize(500,200);
-		labelsPane = new JScrollPane(labelsBox);
-
-		labelsBox.addListSelectionListener(new ListSelectionListener(){
-			@Override
-			public void valueChanged(ListSelectionEvent e){
-				updateSelectedLabel();
-			}
-		});
-		
+	    //create toolbox panel
+	    topToolboxPanel = new JPanel();
+	    topToolboxPanel.setLayout(new BoxLayout(topToolboxPanel, BoxLayout.X_AXIS));
+	    topToolboxPanel.setOpaque(true);
+	    
         //Add buttons
-		JButton newProjectButton = new JButton("New Project");
+		newProjectButton = new JButton("New Project");
 		newProjectButton.setMnemonic(KeyEvent.VK_N);
 		newProjectButton.setSize(50, 20);
 		newProjectButton.setEnabled(true);
@@ -652,7 +637,7 @@ public class ImageLabeller extends JFrame {
 		});
 		newProjectButton.setToolTipText("Click to select an image for a new project");
 
-		JButton openProjectButton = new JButton("Open Project");
+		openProjectButton = new JButton("Open Project");
 		openProjectButton.setMnemonic(KeyEvent.VK_N);
 		openProjectButton.setSize(50, 20);
 		openProjectButton.setEnabled(true);
@@ -664,7 +649,7 @@ public class ImageLabeller extends JFrame {
 		});
 		openProjectButton.setToolTipText("Click to open an existing project");
 
-		JButton saveNewLabelledImageButton = new JButton("Save");
+		saveNewLabelledImageButton = new JButton("Save");
 		saveNewLabelledImageButton.setMnemonic(KeyEvent.VK_N);
 		saveNewLabelledImageButton.setSize(50, 20);
 		saveNewLabelledImageButton.setPreferredSize(new Dimension(100, 30));
@@ -682,29 +667,39 @@ public class ImageLabeller extends JFrame {
 		});
 		saveNewLabelledImageButton.setToolTipText("Click to save labelled image");
 
-		JPanel openButtonsPanel = new JPanel();
-		openButtonsPanel.setLayout(new BoxLayout(openButtonsPanel, BoxLayout.X_AXIS));
-		openButtonsPanel.setMaximumSize(new Dimension(300, 50));
-		openButtonsPanel.add(newProjectButton);
-		openButtonsPanel.add(openProjectButton);
-
-		rightToolboxPanel.add(openButtonsPanel);
-		rightToolboxPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
-		rightToolboxPanel.add(new JLabel("Labels:"));
-		rightToolboxPanel.add(labelsPane);
-		rightToolboxPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
-		rightToolboxPanel.add(saveNewLabelledImageButton);
+		topToolboxPanel.add(newProjectButton);
+		topToolboxPanel.add(openProjectButton);
+		topToolboxPanel.add(saveNewLabelledImageButton);
 		
 		//add toolbox to window
-		middlePanel.add(rightToolboxPanel);
-
-    appPanel.add(middlePanel);
+		appPanel.add(topToolboxPanel);
 
 
-    //create toolbox panel
-    bottomToolboxPanel = new JPanel();
-        
-    //Add buttons
+		//create middle panel with image and sidebar
+		mainPanel = new JPanel();
+
+        //Create and set up the image panel.
+		imagePanel = new ImagePanel("./images/default_image.png");
+		imagePanel.setOpaque(false); //content panes must be opaque
+
+		mainPanel.add(imagePanel);
+
+		rightToolboxPanel = new JPanel();
+		rightToolboxPanel.setLayout(new BoxLayout(rightToolboxPanel, BoxLayout.Y_AXIS));
+
+		//add labels list
+		labelsBox = new JList(labelsListModel);
+		labelsBox.setSize(500,200);
+		labelsPane = new JScrollPane(labelsBox);
+
+		labelsBox.addListSelectionListener(new ListSelectionListener(){
+			@Override
+			public void valueChanged(ListSelectionEvent e){
+				updateSelectedLabel();
+			}
+		});
+
+		//Add buttons
 		editLabelButton = new JButton("Edit Label");
 		editLabelButton.setMnemonic(KeyEvent.VK_N);
 		editLabelButton.setSize(50, 20);
@@ -753,17 +748,37 @@ public class ImageLabeller extends JFrame {
 		});
 		doneEditingButton.setToolTipText("Click when finished editing label");
 		
-		bottomToolboxPanel.add(doneEditingButton);
-		bottomToolboxPanel.add(newPolyButton);
-		bottomToolboxPanel.add(editLabelButton);
-		bottomToolboxPanel.add(delLabelButton);
+		JPanel labelManagePanel = new JPanel();
+		labelManagePanel.setLayout(new BoxLayout(labelManagePanel, BoxLayout.Y_AXIS));
+		labelManagePanel.add(new JLabel("Labels:"));
+		labelManagePanel.add(labelsPane);
+		labelManagePanel.add(new JSeparator(SwingConstants.HORIZONTAL));
+		JPanel editDeletePanel = new JPanel();
+		editDeletePanel.setLayout(new BoxLayout(editDeletePanel, BoxLayout.X_AXIS));
+		editDeletePanel.add(editLabelButton);
+		editDeletePanel.add(delLabelButton);
+		labelManagePanel.add(editDeletePanel);
+		labelManagePanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+
+		JPanel cancelCreatePanel = new JPanel();
+		cancelCreatePanel.setLayout(new BoxLayout(cancelCreatePanel, BoxLayout.X_AXIS));
+		labelManagePanel.add(new JSeparator(SwingConstants.HORIZONTAL));
+		cancelCreatePanel.add(doneEditingButton);
+		cancelCreatePanel.add(newPolyButton);
+
+		rightToolboxPanel.add(labelManagePanel);
+		rightToolboxPanel.add(cancelCreatePanel);
 		
 		//add toolbox to window
-		appPanel.add(bottomToolboxPanel);
+		mainPanel.add(rightToolboxPanel);
 		
+		appPanel.add(topToolboxPanel, BorderLayout.NORTH);
+    	appPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
+    	appPanel.add(mainPanel, BorderLayout.SOUTH);
+    	
 		//display all the stuff
 		this.pack();
-    this.setVisible(true);
+    	this.setVisible(true);
 	}
 	
 	/**
