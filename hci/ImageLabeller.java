@@ -535,7 +535,7 @@ public class ImageLabeller extends JFrame {
 	}
 
 	/**
-	 * handles Cancel Current Label button action
+	 * handles Cancel Label button action
 	 */
 	public void cancelLabel() {
 
@@ -597,7 +597,7 @@ public class ImageLabeller extends JFrame {
 			}
 		});
 
-		JButton popupCancelCurLabelButton = new JButton("Cancel current label");
+		JButton popupCancelCurLabelButton = new JButton("Cancel Label");
 		popupCancelCurLabelButton.setMnemonic(KeyEvent.VK_N);
 		popupCancelCurLabelButton.setSize(20, 20);
 		popupCancelCurLabelButton.setEnabled(true);
@@ -725,7 +725,7 @@ public class ImageLabeller extends JFrame {
 		});
 		editLabelButton.setToolTipText("Click to remove a label");
 
-		JButton newPolyButton = new JButton("Cancel Current Label");
+		JButton newPolyButton = new JButton("Cancel Label");
 		newPolyButton.setMnemonic(KeyEvent.VK_N);
 		newPolyButton.setSize(50, 20);
 		newPolyButton.setEnabled(true);
